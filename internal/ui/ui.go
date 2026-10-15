@@ -68,7 +68,8 @@ func Run() error {
 				Model:                    a.events,
 				NotSortableByHeaderClick: true,
 				LastColumnStretched:      true,
-				OnCurrentIndexChanged:    a.showDetail,				Columns: []TableViewColumn{
+				OnCurrentIndexChanged:    a.showDetail,
+				Columns: []TableViewColumn{
 					{Title: "Day", Width: 110},
 					{Title: "Time", Width: 110},
 					{Title: "Title", Width: 250},

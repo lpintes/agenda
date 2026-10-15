@@ -40,8 +40,10 @@ and what they must do.
 
 - The client JSON (Desktop app type) lives in `%APPDATA%\agenda\client.json`
   and is never committed. Do not print its contents.
-- The token is stored in `%APPDATA%\agenda\token.json`, for now as plain
-  JSON. Planned: Windows Credential Manager or DPAPI.
+- The token is stored in `%APPDATA%\agenda\token.dat` as JSON encrypted
+  with DPAPI for the current user (`internal/auth/dpapi_windows.go`, with
+  app-specific entropy). A plain `token.json` from older versions is
+  converted on first load and deleted.
 - Scopes: `calendar.readonly` now, `calendar.events` once editing exists.
 - The OAuth consent screen is in Testing mode, where refresh tokens expire
   after 7 days. An `invalid_grant` error usually means this; delete the

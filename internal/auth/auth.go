@@ -23,7 +23,9 @@ import (
 
 const (
 	clientFile = "client.json"
-	tokenFile  = "token.json"
+	tokenFile  = "token.dat"
+	// plainTokenFile is the unencrypted token written by older versions.
+	plainTokenFile = "token.json"
 )
 
 // Dir returns the directory holding the client file and the token,
@@ -164,18 +166,40 @@ func (s *savingSource) Token() (*oauth2.Token, error) {
 	return tok, nil
 }
 
-// TODO: store the token in Windows Credential Manager or encrypt it with DPAPI.
+// The token is stored as JSON encrypted with DPAPI, so only the current
+// user on this computer can read it.
 
-func tokenPath() (string, error) {
+func tokenPath(name string) (string, error) {
 	dir, err := Dir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, tokenFile), nil
+	return filepath.Join(dir, name), nil
 }
 
 func loadToken() (*oauth2.Token, error) {
-	path, err := tokenPath()
+	path, err := tokenPath(tokenFile)
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return migratePlainToken()
+	}
+	if err != nil {
+		return nil, err
+	}
+	data, err = unprotect(data)
+	if err != nil {
+		return nil, fmt.Errorf("decrypting token: %w", err)
+	}
+	return parseToken(data)
+}
+
+// migratePlainToken converts a token stored as plain JSON by older versions
+// to the encrypted file and removes the plain one.
+func migratePlainToken() (*oauth2.Token, error) {
+	path, err := tokenPath(plainTokenFile)
 	if err != nil {
 		return nil, err
 	}
@@ -183,6 +207,20 @@ func loadToken() (*oauth2.Token, error) {
 	if err != nil {
 		return nil, err
 	}
+	tok, err := parseToken(data)
+	if err != nil {
+		return nil, err
+	}
+	if err := saveToken(tok); err != nil {
+		return nil, err
+	}
+	if err := os.Remove(path); err != nil {
+		return nil, err
+	}
+	return tok, nil
+}
+
+func parseToken(data []byte) (*oauth2.Token, error) {
 	tok := new(oauth2.Token)
 	if err := json.Unmarshal(data, tok); err != nil {
 		return nil, err
@@ -191,7 +229,7 @@ func loadToken() (*oauth2.Token, error) {
 }
 
 func saveToken(tok *oauth2.Token) error {
-	path, err := tokenPath()
+	path, err := tokenPath(tokenFile)
 	if err != nil {
 		return err
 	}
@@ -201,6 +239,10 @@ func saveToken(tok *oauth2.Token) error {
 	data, err := json.Marshal(tok)
 	if err != nil {
 		return err
+	}
+	data, err = protect(data)
+	if err != nil {
+		return fmt.Errorf("encrypting token: %w", err)
 	}
 	return os.WriteFile(path, data, 0o600)
 }

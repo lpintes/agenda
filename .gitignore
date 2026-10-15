@@ -2,6 +2,7 @@
 client.json
 client_secret*.json
 token.json
+token.dat
 *.token
 
 # Build output

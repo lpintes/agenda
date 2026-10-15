@@ -12,6 +12,7 @@ import (
 
 	"github.com/lpintes/agenda/internal/auth"
 	"github.com/lpintes/agenda/internal/calendar"
+	"github.com/lpintes/agenda/internal/settings"
 )
 
 type app struct {
@@ -27,15 +28,18 @@ type app struct {
 	cals     *calendarModel
 
 	// Owned by the GUI thread.
-	svc        *calendar.Service
-	connecting bool
-	seq        int // number of the latest events request
+	svc          *calendar.Service
+	connecting   bool
+	seq          int // number of the latest events request
+	settings     *settings.Settings
+	settingsPath string
 }
 
 // Run shows the main window and returns when it is closed.
 func Run() error {
 	a := &app{events: new(eventModel)}
-	a.cals = &calendarModel{onChange: a.reload}
+	a.cals = &calendarModel{onChange: a.calendarsChanged}
+	settingsErr := a.loadSettings()
 
 	err := MainWindow{
 		AssignTo: &a.mw,
@@ -56,8 +60,8 @@ func Run() error {
 					ComboBox{
 						AssignTo:              &a.rangeBox,
 						Model:                 rangeNames,
-						CurrentIndex:          int(RangeWeek),
-						OnCurrentIndexChanged: a.reload,
+						CurrentIndex:          int(rangeByName(a.settings.Range)),
+						OnCurrentIndexChanged: a.rangeChanged,
 					},
 					HSpacer{},
 				},
@@ -120,8 +124,53 @@ func Run() error {
 		return err
 	}
 	a.startConnect()
+	if settingsErr != nil {
+		a.report(fmt.Sprintf("Loading settings failed: %v", settingsErr))
+	}
 	a.mw.Run()
 	return nil
+}
+
+// loadSettings reads the settings. On failure the defaults are used.
+func (a *app) loadSettings() error {
+	path, err := settings.Path()
+	if err != nil {
+		a.settings = &settings.Settings{Calendars: map[string]bool{}}
+		return err
+	}
+	a.settingsPath = path
+	a.settings, err = settings.Load(path)
+	return err
+}
+
+// saveSettings writes the settings; failures are reported but not fatal.
+func (a *app) saveSettings() {
+	if a.settingsPath == "" {
+		return
+	}
+	if err := a.settings.Save(a.settingsPath); err != nil {
+		a.report(fmt.Sprintf("Saving settings failed: %v", err))
+	}
+}
+
+func (a *app) rangeChanged() {
+	if a.rangeBox == nil {
+		return
+	}
+	if name := rangeNames[a.rangeKind()]; name != a.settings.Range {
+		a.settings.Range = name
+		a.saveSettings()
+	}
+	a.reload()
+}
+
+// calendarsChanged remembers the checked calendars and reads the events.
+func (a *app) calendarsChanged() {
+	for i, c := range a.cals.cals {
+		a.settings.Calendars[c.ID] = a.cals.checked[i]
+	}
+	a.saveSettings()
+	a.reload()
 }
 
 // addShortcuts sets up the keyboard shortcuts of the main window.
@@ -240,7 +289,7 @@ func (a *app) connect() {
 			return
 		}
 		a.svc = svc
-		a.cals.set(cals)
+		a.cals.set(cals, a.settings.Calendars)
 		a.reload()
 	})
 }
@@ -385,12 +434,17 @@ type calendarModel struct {
 	onChange func() // called when a calendar is checked or unchecked
 }
 
-// set fills the list; calendars shown in Google Calendar start checked.
-func (m *calendarModel) set(cals []calendar.Calendar) {
+// set fills the list. Calendars start checked as saved, or as shown in
+// Google Calendar if saved does not have them.
+func (m *calendarModel) set(cals []calendar.Calendar, saved map[string]bool) {
 	m.cals = cals
 	m.checked = make([]bool, len(cals))
 	for i, c := range cals {
-		m.checked[i] = c.Selected
+		checked, ok := saved[c.ID]
+		if !ok {
+			checked = c.Selected
+		}
+		m.checked[i] = checked
 	}
 	m.PublishRowsReset()
 }

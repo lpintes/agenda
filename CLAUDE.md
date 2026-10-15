@@ -12,6 +12,10 @@ the GUI library `github.com/lpintes/walk` (local clone in
 - `internal/calendar`: Google Calendar API wrapper with the app's own
   `Calendar` and `Event` model; recurring events are expanded
   (`singleEvents=true`).
+- `internal/settings`: `%APPDATA%\agenda\settings.json` with the last range
+  (by name) and the checked state of calendars by ID; calendars not listed
+  there use their Google `Selected` flag. Saved on every change. Window size
+  and position are deliberately not stored.
 - `cmd/agenda-check`: console check that signs in and prints the next seven
   days. Use it to verify auth and API changes without the GUI.
 - `internal/ui` and `main.go`: GUI. `period.go` holds the date logic

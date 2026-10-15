@@ -92,3 +92,16 @@ func TestPeriodString(t *testing.T) {
 		t.Errorf("week: %q", got)
 	}
 }
+
+func TestRangeByName(t *testing.T) {
+	for i, name := range rangeNames {
+		if got := rangeByName(name); got != RangeKind(i) {
+			t.Errorf("rangeByName(%q) = %d, want %d", name, got, i)
+		}
+	}
+	for _, name := range []string{"", "Year"} {
+		if got := rangeByName(name); got != RangeWeek {
+			t.Errorf("rangeByName(%q) = %d, want RangeWeek", name, got)
+		}
+	}
+}

@@ -15,6 +15,17 @@ const (
 // rangeNames are the range combo box items, in RangeKind order.
 var rangeNames = []string{"Day", "Week", "Month", "Next 30 days"}
 
+// rangeByName returns the range called name in the settings, or a week if
+// there is no such range.
+func rangeByName(name string) RangeKind {
+	for i, n := range rangeNames {
+		if n == name {
+			return RangeKind(i)
+		}
+	}
+	return RangeWeek
+}
+
 // Period is the half-open interval [From, To) of local days.
 type Period struct {
 	From, To time.Time

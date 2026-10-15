@@ -50,8 +50,12 @@ and what they must do.
   converted on first load and deleted.
 - Scopes: `calendar.readonly` now, `calendar.events` once editing exists.
 - The OAuth consent screen is in Testing mode, where refresh tokens expire
-  after 7 days. An `invalid_grant` error usually means this; delete the
-  token and sign in again.
+  after 7 days. An `invalid_grant` error usually means this; the GUI
+  (`failed` in `ui.go`, `auth.Expired`) then deletes the token and asks
+  for F5, which signs in through the browser again.
+- Failed requests are announced with the reason (`describe` in
+  `internal/ui/errors.go` turns network errors into plain text) and F5
+  retries. Sign-in in the browser times out after 5 minutes.
 - The repository is public: never commit the Cloud project ID, e-mail
   addresses or anything from the client file.
 
@@ -77,6 +81,8 @@ The user is blind and works with NVDA.
 - Do not announce routine results such as "5 events": with NVDA the
   announcement talks over the control being read, even with
   `AnnounceMostRecent`. Put them in the status bar; announce only errors.
+- NVDA drops announcements made while it reads a newly opened window, so
+  `report` holds them back until 1.5 s after start (`startupQuiet`).
 - Open question: `DateEdit` (the native date picker) is hard to use with
   NVDA: it does not say whether day, month or year is focused, and the Up
   arrow moves forward. Look for a better way to pick a date.

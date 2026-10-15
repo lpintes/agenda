@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -26,6 +27,8 @@ const (
 	tokenFile  = "token.dat"
 	// plainTokenFile is the unencrypted token written by older versions.
 	plainTokenFile = "token.json"
+	// loginTimeout is how long Login waits for the sign-in in the browser.
+	loginTimeout = 5 * time.Minute
 )
 
 // Dir returns the directory holding the client file and the token,
@@ -62,7 +65,13 @@ func LoadConfig(scopes ...string) (*oauth2.Config, error) {
 func TokenSource(ctx context.Context, cfg *oauth2.Config) (oauth2.TokenSource, error) {
 	tok, err := loadToken()
 	if err != nil {
-		tok, err = Login(ctx, cfg)
+		// Without a limit, closing the browser would leave us waiting forever.
+		lctx, cancel := context.WithTimeout(ctx, loginTimeout)
+		defer cancel()
+		tok, err = Login(lctx, cfg)
+		if errors.Is(err, context.DeadlineExceeded) {
+			err = errors.New("sign-in in the browser was not finished in time")
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -164,6 +173,30 @@ func (s *savingSource) Token() (*oauth2.Token, error) {
 		s.last = tok
 	}
 	return tok, nil
+}
+
+// Expired reports whether err means that Google no longer accepts the
+// stored token (invalid_grant), for example because it was revoked or, while
+// the consent screen is in Testing mode, is older than 7 days. Signing in
+// again is the only remedy.
+func Expired(err error) bool {
+	var re *oauth2.RetrieveError
+	return errors.As(err, &re) && re.ErrorCode == "invalid_grant"
+}
+
+// DeleteToken removes the stored token, so that the next TokenSource signs
+// in through the browser. A missing token is not an error.
+func DeleteToken() error {
+	for _, name := range []string{tokenFile, plainTokenFile} {
+		path, err := tokenPath(name)
+		if err != nil {
+			return err
+		}
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
 }
 
 // The token is stored as JSON encrypted with DPAPI, so only the current

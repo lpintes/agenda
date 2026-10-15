@@ -33,6 +33,7 @@ type app struct {
 	seq          int // number of the latest events request
 	settings     *settings.Settings
 	settingsPath string
+	started      time.Time // when the window was created
 }
 
 // Run shows the main window and returns when it is closed.
@@ -123,6 +124,7 @@ func Run() error {
 	if err := a.addShortcuts(); err != nil {
 		return err
 	}
+	a.started = time.Now()
 	a.startConnect()
 	if settingsErr != nil {
 		a.report(fmt.Sprintf("Loading settings failed: %v", settingsErr))
@@ -285,7 +287,7 @@ func (a *app) connect() {
 	a.mw.Synchronize(func() {
 		a.connecting = false
 		if err != nil {
-			a.report(fmt.Sprintf("Sign-in failed: %v. Press F5 to try again.", err))
+			a.failed("Connecting to Google", err)
 			return
 		}
 		a.svc = svc
@@ -326,7 +328,7 @@ func (a *app) fetch(seq int) {
 				return
 			}
 			if err != nil {
-				a.report(fmt.Sprintf("Loading events failed: %v", err))
+				a.failed("Loading events", err)
 				return
 			}
 			a.events.set(events)
@@ -366,12 +368,38 @@ func (a *app) showDetail() {
 	a.detail.SetText(text)
 }
 
+// failed reports a failed request; F5 tries again. An expired sign-in also
+// removes the stored token, so that F5 signs in through the browser.
+func (a *app) failed(what string, err error) {
+	if !auth.Expired(err) {
+		a.report(fmt.Sprintf("%s failed: %s. Press F5 to try again.", what, describe(err)))
+		return
+	}
+	a.svc = nil
+	if err := auth.DeleteToken(); err != nil {
+		a.report(fmt.Sprintf("Removing the expired sign-in failed: %v", err))
+		return
+	}
+	a.report("The Google sign-in has expired. Press F5 to sign in again; the browser will open.")
+}
+
 // report shows an error in the status bar and has screen readers speak it
 // after what they are saying now.
 func (a *app) report(text string) {
 	a.status.SetText(text)
+	// Right after start, screen readers drop announcements when they read
+	// the new window and its focus, so wait until they are done.
+	if wait := time.Until(a.started.Add(startupQuiet)); wait > 0 {
+		time.AfterFunc(wait, func() {
+			a.mw.Synchronize(func() { walk.Announce(a.mw, text, walk.AnnounceMostRecent) })
+		})
+		return
+	}
 	walk.Announce(a.mw, text, walk.AnnounceMostRecent)
 }
+
+// startupQuiet is how long after start announcements are held back.
+const startupQuiet = 1500 * time.Millisecond
 
 func capitalize(s string) string {
 	if s == "" {

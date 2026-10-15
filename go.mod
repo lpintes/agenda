@@ -3,7 +3,7 @@ module github.com/lpintes/agenda
 go 1.27.2
 
 require (
-	github.com/lpintes/walk v0.0.0-20261015160835-48a1bdd19fe5
+	github.com/lpintes/walk v0.0.0-20261015165107-31cea78122e9
 	golang.org/x/oauth2 v0.37.0
 	google.golang.org/api v0.304.0
 )

@@ -15,8 +15,8 @@ the GUI library `github.com/lpintes/walk` (local clone in
 - `cmd/agenda-check`: console check that signs in and prints the next seven
   days. Use it to verify auth and API changes without the GUI.
 - `internal/ui` and `main.go`: GUI. `period.go` holds the date logic
-  (ranges, shifting, row to select) and is unit tested; `ui.go` the main
-  window.
+  (ranges, shifting, row to select) and `details.go` the text of the detail
+  pane; both are unit tested. `ui.go` is the main window.
 
 ## Build and run
 

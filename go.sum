@@ -29,6 +29,8 @@ github.com/googleapis/gax-go/v2 v2.26.2 h1:ydkmNXxj7bEmmeK5AihkKnWxyOyBR9TDebvp5
 github.com/googleapis/gax-go/v2 v2.26.2/go.mod h1:sMKqnMesnKH+3wiRJROcttA+cJoZoGbZl1vDQ8XYtGk=
 github.com/lpintes/walk v0.0.0-20261015160835-48a1bdd19fe5 h1:endq1fN4nBZK4zjnrV/U5AQ+O5qFsR++zWGLV85l5YM=
 github.com/lpintes/walk v0.0.0-20261015160835-48a1bdd19fe5/go.mod h1:7+XKqik7mg3vaJ9DiBWw/oMUdhRKat5JVWFdpVUktR4=
+github.com/lpintes/walk v0.0.0-20261015165107-31cea78122e9 h1:9IR60KTWkq7pVRF85ufEHIXRCDqeW4YGphNUW2oKzBQ=
+github.com/lpintes/walk v0.0.0-20261015165107-31cea78122e9/go.mod h1:7+XKqik7mg3vaJ9DiBWw/oMUdhRKat5JVWFdpVUktR4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=

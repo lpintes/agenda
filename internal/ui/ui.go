@@ -19,18 +19,21 @@ type app struct {
 	dateEdit *walk.DateEdit
 	rangeBox *walk.ComboBox
 	table    *walk.TableView
+	detail   *walk.TextEdit
+	calTable *walk.TableView
 	status   *walk.StatusBarItem
 	events   *eventModel
+	cals     *calendarModel
 
 	// Owned by the GUI thread.
-	svc  *calendar.Service
-	cals []calendar.Calendar // calendars whose events are shown
-	seq  int                 // number of the latest events request
+	svc *calendar.Service
+	seq int // number of the latest events request
 }
 
 // Run shows the main window and returns when it is closed.
 func Run() error {
 	a := &app{events: new(eventModel)}
+	a.cals = &calendarModel{onChange: a.reload}
 
 	err := MainWindow{
 		AssignTo: &a.mw,
@@ -63,6 +66,7 @@ func Run() error {
 				Model:                    a.events,
 				NotSortableByHeaderClick: true,
 				LastColumnStretched:      true,
+				OnCurrentIndexChanged:    a.showDetail,
 				Columns: []TableViewColumn{
 					{Title: "Day", Width: 110},
 					{Title: "Time", Width: 110},
@@ -71,7 +75,27 @@ func Run() error {
 					{Title: "Location"},
 				},
 			},
-			// Below the table so that Tab reaches the events first.
+			Label{Text: "Deta&ils:"},
+			TextEdit{
+				AssignTo: &a.detail,
+				ReadOnly: true,
+				VScroll:  true,
+				MinSize:  Size{Height: 100},
+				MaxSize:  Size{Height: 160},
+			},
+			Label{Text: "&Calendars:"},
+			TableView{
+				AssignTo:                 &a.calTable,
+				Model:                    a.cals,
+				CheckBoxes:               true,
+				HeaderHidden:             true,
+				NotSortableByHeaderClick: true,
+				LastColumnStretched:      true,
+				MinSize:                  Size{Height: 60},
+				MaxSize:                  Size{Height: 100},
+				Columns:                  []TableViewColumn{{Title: "Calendar"}},
+			},
+			// Last in the Tab order: rarely used.
 			Composite{
 				Layout: HBox{MarginsZero: true},
 				Children: []Widget{
@@ -123,24 +147,19 @@ func (a *app) connect() {
 		if err != nil {
 			return nil, nil, err
 		}
-		all, err := svc.Calendars(ctx)
+		cals, err := svc.Calendars(ctx)
 		if err != nil {
 			return nil, nil, err
 		}
-		var shown []calendar.Calendar
-		for _, c := range all {
-			if c.Selected {
-				shown = append(shown, c)
-			}
-		}
-		return svc, shown, nil
+		return svc, cals, nil
 	}()
 	a.mw.Synchronize(func() {
 		if err != nil {
 			a.report(fmt.Sprintf("Sign-in failed: %v", err))
 			return
 		}
-		a.svc, a.cals = svc, cals
+		a.svc = svc
+		a.cals.set(cals)
 		a.reload()
 	})
 }
@@ -168,7 +187,7 @@ func (a *app) reload() {
 
 func (a *app) fetch(seq int) {
 	period := periodOf(a.rangeKind(), a.dateEdit.Date())
-	svc, cals := a.svc, a.cals
+	svc, cals := a.svc, a.cals.shown()
 	a.status.SetText("Loading " + period.String() + "...")
 	go func() {
 		events, err := svc.Events(context.Background(), cals, period.From, period.To)
@@ -184,6 +203,7 @@ func (a *app) fetch(seq int) {
 			if len(events) > 0 {
 				a.table.SetCurrentIndex(firstRow(events, period, time.Now()))
 			}
+			a.showDetail()
 			// Not announced: it would talk over the field the user is in.
 			a.status.SetText(fmt.Sprintf("%s, %s", capitalize(countEvents(len(events))), period))
 		})
@@ -202,6 +222,18 @@ func firstRow(events []calendar.Event, period Period, now time.Time) int {
 		}
 	}
 	return len(events) - 1
+}
+
+// showDetail shows the current event in the detail pane.
+func (a *app) showDetail() {
+	if a.detail == nil {
+		return
+	}
+	text := ""
+	if i := a.table.CurrentIndex(); i >= 0 && i < len(a.events.events) {
+		text = details(a.events.events[i])
+	}
+	a.detail.SetText(text)
 }
 
 // report shows an error in the status bar and has screen readers speak it
@@ -262,4 +294,51 @@ func (m *eventModel) Value(row, col int) any {
 		return e.Location
 	}
 	return ""
+}
+
+// calendarModel is the model of the checkable calendar list.
+type calendarModel struct {
+	walk.TableModelBase
+	cals     []calendar.Calendar
+	checked  []bool
+	onChange func() // called when a calendar is checked or unchecked
+}
+
+// set fills the list; calendars shown in Google Calendar start checked.
+func (m *calendarModel) set(cals []calendar.Calendar) {
+	m.cals = cals
+	m.checked = make([]bool, len(cals))
+	for i, c := range cals {
+		m.checked[i] = c.Selected
+	}
+	m.PublishRowsReset()
+}
+
+// shown returns the checked calendars.
+func (m *calendarModel) shown() []calendar.Calendar {
+	var shown []calendar.Calendar
+	for i, c := range m.cals {
+		if m.checked[i] {
+			shown = append(shown, c)
+		}
+	}
+	return shown
+}
+
+func (m *calendarModel) RowCount() int {
+	return len(m.cals)
+}
+
+func (m *calendarModel) Value(row, col int) any {
+	return m.cals[row].Name
+}
+
+func (m *calendarModel) Checked(row int) bool {
+	return m.checked[row]
+}
+
+func (m *calendarModel) SetChecked(row int, checked bool) error {
+	m.checked[row] = checked
+	m.onChange()
+	return nil
 }

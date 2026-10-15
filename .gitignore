@@ -1,0 +1,8 @@
+# OAuth client credentials and tokens must never be committed.
+client.json
+client_secret*.json
+token.json
+*.token
+
+# Build output
+*.exe

@@ -27,6 +27,8 @@ github.com/googleapis/enterprise-certificate-proxy v0.3.23 h1:J+VGF1wjAM2dU2kKUX
 github.com/googleapis/enterprise-certificate-proxy v0.3.23/go.mod h1:Y8NO/15GNLkrXI3OR5xOFmeU3XLX1sLSdtlXgJ0zmIw=
 github.com/googleapis/gax-go/v2 v2.26.2 h1:ydkmNXxj7bEmmeK5AihkKnWxyOyBR9TDebvp5L5izk8=
 github.com/googleapis/gax-go/v2 v2.26.2/go.mod h1:sMKqnMesnKH+3wiRJROcttA+cJoZoGbZl1vDQ8XYtGk=
+github.com/lpintes/walk v0.0.0-20261015160835-48a1bdd19fe5 h1:endq1fN4nBZK4zjnrV/U5AQ+O5qFsR++zWGLV85l5YM=
+github.com/lpintes/walk v0.0.0-20261015160835-48a1bdd19fe5/go.mod h1:7+XKqik7mg3vaJ9DiBWw/oMUdhRKat5JVWFdpVUktR4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
@@ -71,5 +73,7 @@ google.golang.org/grpc v1.84.0 h1:soMyaPJ8pAak5PIQ0DGBUir0XRo2fRoMqhNWMLlLxO0=
 google.golang.org/grpc v1.84.0/go.mod h1:ljCht0DrxQrXBDRTZp52Qxh3Ffk8CdYm2sj4O2QN2C0=
 google.golang.org/protobuf v1.36.12 h1:pJOKDDOyeXErUroCihFAd5LQuwXBSpVnKGrj5o/fwxc=
 google.golang.org/protobuf v1.36.12/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
+gopkg.in/Knetic/govaluate.v3 v3.0.0 h1:18mUyIt4ZlRlFZAAfVetz4/rzlJs9yhN+U02F4u1AOc=
+gopkg.in/Knetic/govaluate.v3 v3.0.0/go.mod h1:csKLBORsPbafmSCGTEh3U7Ozmsuq8ZSIlKk1bcqph0E=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=

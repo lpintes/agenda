@@ -14,15 +14,21 @@ the GUI library `github.com/lpintes/walk` (local clone in
   (`singleEvents=true`).
 - `cmd/agenda-check`: console check that signs in and prints the next seven
   days. Use it to verify auth and API changes without the GUI.
-- `internal/ui` and `main.go`: GUI, not written yet.
+- `internal/ui` and `main.go`: GUI. `period.go` holds the date logic
+  (ranges, shifting, row to select) and is unit tested; `ui.go` the main
+  window.
 
 ## Build and run
 
 ```
-go vet ./...
-go build -o agenda-check.exe ./cmd/agenda-check
+./build.sh -test
+.\agenda.exe
 .\agenda-check.exe
 ```
+
+`build.sh` builds both executables; `-test` first runs `go vet` and
+`go test`. `rsrc_windows_amd64.syso` is committed; regenerate it with
+`go generate .` after changing `agenda.exe.manifest`.
 
 The first run opens the default browser for Google sign-in; the user must
 sign in and allow access (the "unverified app" warning needs "Continue").
@@ -50,14 +56,24 @@ and what they must do.
   `github.com/akavel/rsrc`). The examples ship 386 COFF; generate one per
   target architecture.
 - walk has no month calendar widget, only `DateEdit`.
+- walk is used from GitHub (`go get github.com/lpintes/walk@<commit>`).
+  To test a walk fix first, use a temporary
+  `go mod edit -replace github.com/lpintes/walk=../walk` and drop it
+  before committing. `gh` in the walk clone needs `--repo lpintes/walk`
+  (it also has the `lxn/walk` upstream remote).
 
 ## Accessibility conventions
 
 The user is blind and works with NVDA.
 
-- Everything must be reachable from the keyboard, with a sensible Tab order.
-- Status changes are announced (`walk.Announce` or a live region in the
-  status bar).
+- Everything must be reachable from the keyboard, with a sensible Tab order:
+  fields the user works with first, rarely used buttons last.
+- Do not announce routine results such as "5 events": with NVDA the
+  announcement talks over the control being read, even with
+  `AnnounceMostRecent`. Put them in the status bar; announce only errors.
+- Open question: `DateEdit` (the native date picker) is hard to use with
+  NVDA: it does not say whether day, month or year is focused, and the Up
+  arrow moves forward. Look for a better way to pick a date.
 - Planned shortcuts: Ctrl+Left and Ctrl+Right previous and next period,
   Ctrl+D today, Ctrl+G go to date, F5 refresh, F6 cycle panes, Enter detail;
   later Ctrl+N new, F2 edit, Delete delete.

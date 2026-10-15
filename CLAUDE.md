@@ -74,9 +74,14 @@ The user is blind and works with NVDA.
 - Open question: `DateEdit` (the native date picker) is hard to use with
   NVDA: it does not say whether day, month or year is focused, and the Up
   arrow moves forward. Look for a better way to pick a date.
-- Planned shortcuts: Ctrl+Left and Ctrl+Right previous and next period,
-  Ctrl+D today, Ctrl+G go to date, F5 refresh, F6 cycle panes, Enter detail;
-  later Ctrl+N new, F2 edit, Delete delete.
+- Shortcuts: Ctrl+Left and Ctrl+Right previous and next period (everywhere
+  except the detail pane, where they move by words), Ctrl+D today, Ctrl+G
+  go to date, F5 refresh (or retry sign-in), F6 and Shift+F6 cycle panes
+  (date, events, details, calendars). Enter in the events list does nothing
+  for now (moving to the details was pointless, F6 does it); it is free for
+  opening an event later. They are walk shortcut actions (`ShortcutActions()`), which walk
+  looks up from the focused window up through its parents. Planned: Ctrl+N
+  new, F2 edit, Delete delete.
 
 ## Conventions
 

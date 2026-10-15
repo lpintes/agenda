@@ -21,13 +21,15 @@ type app struct {
 	table    *walk.TableView
 	detail   *walk.TextEdit
 	calTable *walk.TableView
+	buttons  *walk.Composite
 	status   *walk.StatusBarItem
 	events   *eventModel
 	cals     *calendarModel
 
 	// Owned by the GUI thread.
-	svc *calendar.Service
-	seq int // number of the latest events request
+	svc        *calendar.Service
+	connecting bool
+	seq        int // number of the latest events request
 }
 
 // Run shows the main window and returns when it is closed.
@@ -66,8 +68,7 @@ func Run() error {
 				Model:                    a.events,
 				NotSortableByHeaderClick: true,
 				LastColumnStretched:      true,
-				OnCurrentIndexChanged:    a.showDetail,
-				Columns: []TableViewColumn{
+				OnCurrentIndexChanged:    a.showDetail,				Columns: []TableViewColumn{
 					{Title: "Day", Width: 110},
 					{Title: "Time", Width: 110},
 					{Title: "Title", Width: 250},
@@ -97,7 +98,8 @@ func Run() error {
 			},
 			// Last in the Tab order: rarely used.
 			Composite{
-				Layout: HBox{MarginsZero: true},
+				AssignTo: &a.buttons,
+				Layout:   HBox{MarginsZero: true},
 				Children: []Widget{
 					PushButton{Text: "&Previous", OnClicked: func() { a.move(-1) }},
 					PushButton{Text: "&Today", OnClicked: a.today},
@@ -113,9 +115,76 @@ func Run() error {
 	if err != nil {
 		return err
 	}
-	go a.connect()
+	if err := a.addShortcuts(); err != nil {
+		return err
+	}
+	a.startConnect()
 	a.mw.Run()
 	return nil
+}
+
+// addShortcuts sets up the keyboard shortcuts of the main window.
+func (a *app) addShortcuts() error {
+	// Not in the detail pane, where Ctrl+Left and Ctrl+Right move by words.
+	period := []*walk.Action{
+		shortcut(walk.ModControl, walk.KeyLeft, func() { a.move(-1) }),
+		shortcut(walk.ModControl, walk.KeyRight, func() { a.move(1) }),
+	}
+	for _, w := range []walk.Window{a.dateEdit, a.rangeBox, a.table, a.calTable, a.buttons} {
+		for _, action := range period {
+			if err := w.AsWindowBase().ShortcutActions().Add(action); err != nil {
+				return err
+			}
+		}
+	}
+	global := []*walk.Action{
+		shortcut(walk.ModControl, walk.KeyD, a.today),
+		shortcut(walk.ModControl, walk.KeyG, func() { a.dateEdit.SetFocus() }),
+		shortcut(0, walk.KeyF5, a.refresh),
+		shortcut(0, walk.KeyF6, func() { a.cyclePanes(1) }),
+		shortcut(walk.ModShift, walk.KeyF6, func() { a.cyclePanes(-1) }),
+	}
+	for _, action := range global {
+		if err := a.mw.ShortcutActions().Add(action); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func shortcut(mods walk.Modifiers, key walk.Key, f func()) *walk.Action {
+	action := walk.NewAction()
+	action.SetShortcut(walk.Shortcut{Modifiers: mods, Key: key})
+	action.Triggered().Attach(f)
+	return action
+}
+
+// cyclePanes moves the focus by n panes: date, events, details, calendars.
+func (a *app) cyclePanes(n int) {
+	panes := []walk.Widget{a.dateEdit, a.table, a.detail, a.calTable}
+	current := -1
+	if a.rangeBox.Focused() {
+		current = 0 // the range belongs to the date pane
+	}
+	for i, p := range panes {
+		if p.Focused() {
+			current = i
+		}
+	}
+	next := (current + n + len(panes)) % len(panes)
+	if current < 0 && n < 0 {
+		next = len(panes) - 1
+	}
+	panes[next].SetFocus()
+}
+
+// refresh reads the events again, or retries signing in if it failed.
+func (a *app) refresh() {
+	if a.svc == nil {
+		a.startConnect()
+		return
+	}
+	a.reload()
 }
 
 func (a *app) rangeKind() RangeKind {
@@ -128,6 +197,16 @@ func (a *app) move(n int) {
 
 func (a *app) today() {
 	a.dateEdit.SetDate(time.Now())
+}
+
+// startConnect starts connect unless it is already running.
+func (a *app) startConnect() {
+	if a.connecting {
+		return
+	}
+	a.connecting = true
+	a.status.SetText("Signing in...")
+	go a.connect()
 }
 
 // connect signs in and reads the calendar list in the background; signing
@@ -154,8 +233,9 @@ func (a *app) connect() {
 		return svc, cals, nil
 	}()
 	a.mw.Synchronize(func() {
+		a.connecting = false
 		if err != nil {
-			a.report(fmt.Sprintf("Sign-in failed: %v", err))
+			a.report(fmt.Sprintf("Sign-in failed: %v. Press F5 to try again.", err))
 			return
 		}
 		a.svc = svc
